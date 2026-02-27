@@ -8,6 +8,10 @@ Hidefumi Matsuda et al.,
 - scripts/ : scripts to reproduce figures
 - configs/ : parameter settings used in simulations
 
+## Usage
+Run the plotting scripts in the `scripts/` directory using the data files in the `data/` directory.
+- Use the provided `.pth` model files and `.dat` data files as inputs specified in each script.
+
 ## Reproducibility
 The repository provides the data and scripts necessary to reproduce the main numerical results and figures presented in the manuscript.
 
