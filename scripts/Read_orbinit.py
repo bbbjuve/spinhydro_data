@@ -1,9 +1,9 @@
-import torch                   
-import torch.nn as nn          
-import numpy as np             
+import torch
+import torch.nn as nn
+import numpy as np
 import math
 import matplotlib.pyplot as plt
-import sobol_seq               
+import sobol_seq
 #import matplotlib as mpl
 from torch.utils.data import DataLoader, TensorDataset
 from torch.cuda.amp   import autocast, GradScaler
@@ -27,12 +27,12 @@ current_timestamp = time.time()
 # 例えば、"import numpy"はライブラリnumpyの中のnumpyパッケージをインポートしている。
 
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # GPUが利用可能であれば'cuda'、そうでなければ'cpu'を使用
 class Config: # Parameterのセット
         Nc           = 3                  # SU(N)ゲージ理論における色の数
         Nadj         = Nc * Nc - 1        # adjoint表現（ゲージ場の自由度）の数
-        Nf           = 2                  # 軽いquarkの数 
+        Nf           = 2                  # 軽いquarkの数
         R            = 1                  # 系の半径を表すパラメータ, (b_{imp}/2=R_A/2) 3fm=16[GeV unit]
         t_bin        = 0.2                # 時間の最大値です。10fm=50 [GeV unit]
         t_max        = 0.2                # 時間の最大値です。10fm=50 [GeV unit]
@@ -74,45 +74,45 @@ class Config: # Parameterのセット
 class DataHandler:
         def __init__(self, config):
                 self.config = config
-        
-        def generate_collocation_points(self):  
+
+        def generate_collocation_points(self):
                 samples = np.random.uniform(0, 1, (self.config.Np, 2))  # 3次元のランダムサンプル
-                data    = samples.copy()    
+                data    = samples.copy()
                 data[:, 0]  = data[:, 0] * self.config.t_max
                 data[:, 1]  = np.sqrt(data[:, 1]) * self.config.R
-                t_c = np.expand_dims(data[:, 0], axis=1) 
-                x_c = np.expand_dims(data[:, 1], axis=1)    
+                t_c = np.expand_dims(data[:, 0], axis=1)
+                x_c = np.expand_dims(data[:, 1], axis=1)
 
                 x_c = np.maximum(x_c, 0.0001 * self.config.R    )  # 原点回避（必要なら）
-                return t_c, x_c     
-        
+                return t_c, x_c
+
         def generate_data(self):
                 t_c, x_c  = self.generate_collocation_points()    # コロケーションポイントを生成
                 return t_c, x_c
 
-        def generate_collocation_points2(self):  
+        def generate_collocation_points2(self):
                 samples = np.random.uniform(0, 1, (self.config.Np, 2))  # 3次元のランダムサンプル
-                data    = samples.copy()    
+                data    = samples.copy()
                 data[:, 0]  = data[:, 0] * self.config.t_max
                 data[:, 1]  = data[:, 1] * self.config.R
-                t_c = np.expand_dims(data[:, 0], axis=1) 
-                x_c = np.expand_dims(data[:, 1], axis=1)    
+                t_c = np.expand_dims(data[:, 0], axis=1)
+                x_c = np.expand_dims(data[:, 1], axis=1)
 
                 x_c = np.maximum(x_c, 0.0001 * self.config.R    )  # 原点回避（必要なら）
-                return t_c, x_c     
-        
+                return t_c, x_c
+
         def generate_data2(self):
                 t_c, x_c  = self.generate_collocation_points2()    # コロケーションポイントを生成
                 return t_c, x_c
 
-        def generate_collocation_points_bc(self):  
+        def generate_collocation_points_bc(self):
                 if config.Np % 5 != 0:
-                        print("config.Np is not divisible by 5")                
+                        print("config.Np is not divisible by 5")
                 t_c2 = np.random.uniform(low=0.0,               high=config.t_max, size=(config.Np//5, 1))
                 x_c2 = np.random.uniform(low=0.9999 * config.R, high=config.R,     size=(config.Np//5, 1))
 
-                return t_c2, x_c2     
-        
+                return t_c2, x_c2
+
         def generate_data_bc(self):
                 t_c2, x_c2  = self.generate_collocation_points_bc()    # コロケーションポイントを生成
                 return t_c2, x_c2
@@ -233,7 +233,7 @@ class PINNs():
 
 # ニューラルネットワーク変数aと定数a0
         def net_a(self, t, x, t_b2=None, x_b2=None):
- 
+
                 e_ic_tensor     = torch.tensor(config.e_ic,     dtype=torch.float32, device=device)
                 sigma_om_tensor = torch.tensor(config.sigma_om, dtype=torch.float32, device=device)
                 R_tensor        = torch.tensor(config.R,        dtype=torch.float32, device=device)
@@ -243,14 +243,14 @@ class PINNs():
 ############################## Initial Condition ##############################
                 with torch.no_grad():
 
-                        a_0        = torch.zeros((x.shape[0], 5)).to(device) 
-                        a_0_r      = torch.zeros((x.shape[0], 5)).to(device)                     
-                        d_a_0      = torch.zeros((x.shape[0], 5)).to(device) 
+                        a_0        = torch.zeros((x.shape[0], 5)).to(device)
+                        a_0_r      = torch.zeros((x.shape[0], 5)).to(device)
+                        d_a_0      = torch.zeros((x.shape[0], 5)).to(device)
                         d_a_0_r    = torch.zeros((x.shape[0], 5)).to(device)
-                        a_b_0      = torch.zeros(5).to(device)    
-                        a_b_0_r    = torch.zeros(5).to(device) 
-                        a_c_0      = torch.zeros(5).to(device)    
-                        a_c_0_r    = torch.zeros(5).to(device) 
+                        a_b_0      = torch.zeros(5).to(device)
+                        a_b_0_r    = torch.zeros(5).to(device)
+                        a_c_0      = torch.zeros(5).to(device)
+                        a_c_0_r    = torch.zeros(5).to(device)
 
 
 # Rigid Rotation (Staionary Condition)
@@ -259,11 +259,11 @@ class PINNs():
                         a_0[:,3]    = config.omega_ic * torch.sqrt(e_ic_tensor) * 0.5 / config.factor_s /            rigid_tensor**2
                         a_0_r[:,0]  = config.e_ic                                                       * 4*x[:,0]*config.omega_ic**2 / rigid_tensor**3
                         a_0_r[:,2]  = config.omega_ic                                                   *   x[:,0]*config.omega_ic**2 / rigid_tensor**1.5
-                        a_0_r[:,3]  = config.omega_ic * 0.5 / config.factor_s * torch.sqrt(e_ic_tensor) * 4*x[:,0]*config.omega_ic**2 / rigid_tensor**3 
+                        a_0_r[:,3]  = config.omega_ic * 0.5 / config.factor_s * torch.sqrt(e_ic_tensor) * 4*x[:,0]*config.omega_ic**2 / rigid_tensor**3
 
                         a_b_0[0]    = config.e_ic                                                       /            rigid_tensor_b**2
                         a_b_0[2]    = config.omega_ic                                                   / torch.sqrt(rigid_tensor_b)
-                        a_b_0[3]    = config.omega_ic * torch.sqrt(e_ic_tensor) * 0.5 / config.factor_s /            rigid_tensor_b**2  
+                        a_b_0[3]    = config.omega_ic * torch.sqrt(e_ic_tensor) * 0.5 / config.factor_s /            rigid_tensor_b**2
                         a_b_0_r[0]    = config.e_ic                                                       * 4*config.R*config.omega_ic**2 / rigid_tensor_b**3
                         a_b_0_r[2]    = config.omega_ic                                                   *   config.R*config.omega_ic**2 / rigid_tensor_b**1.5
                         a_b_0_r[3]    = config.omega_ic * 0.5 / config.factor_s * torch.sqrt(e_ic_tensor) * 4*config.R*config.omega_ic**2 / rigid_tensor_b**3
@@ -278,7 +278,7 @@ class PINNs():
                                 d_a_0  [:,2] =                            omega_ic2 * torch.sin(  sigma_om_tensor*x[:,0])**4
                                 d_a_0_r[:,2] = 2.0 * config.sigma_om    * omega_ic2 * torch.sin(2*sigma_om_tensor*x[:,0]) * torch.sin(sigma_om_tensor*x[:,0])**2
                                 a_0  [:,2]  += d_a_0  [:,2]
-                                a_0_r[:,2]  += d_a_0_r[:,2]                     
+                                a_0_r[:,2]  += d_a_0_r[:,2]
 
                         else:
 
@@ -286,7 +286,7 @@ class PINNs():
                                 d_a_0[:,3]   =                         omega_ic2 * torch.sin(  sigma_om_tensor*x[:,0])**4
                                 d_a_0_r[:,3] = 2.0 * config.sigma_om * omega_ic2 * torch.sin(2*sigma_om_tensor*x[:,0]) * torch.sin(sigma_om_tensor*x[:,0])**2
                                 a_0[:,3]    += d_a_0  [:,3]
-                                a_0_r[:,3]  += d_a_0_r[:,3]                      
+                                a_0_r[:,3]  += d_a_0_r[:,3]
 ##############################
 
 
@@ -296,7 +296,7 @@ class PINNs():
                 a   = self.dnn(torch.cat([tt, xx], dim=1))
 
 
-                t_i  = torch.zeros_like(t, dtype=torch.int)  
+                t_i  = torch.zeros_like(t, dtype=torch.int)
                 x_b  = torch.ones_like (x,  dtype=torch.int) * config.R
                 tt_i = 0.5*(2.0*t_i   /config.t_max2 - 1.0)
                 xx_b = 0.5*(2.0*x_b   /config.R      - 1.0)
@@ -313,7 +313,7 @@ class PINNs():
 ##                        a_ib2   = torch.zeros_like(a)
 ##                        a_ib2_r = torch.zeros_like(a)
 ##                else:
-##                        t_ib2   = torch.zeros_like(t_b2, dtype=torch.int)  
+##                        t_ib2   = torch.zeros_like(t_b2, dtype=torch.int)
 ##                        tt_b2   = 2.0*t_b2   /config.R      - 1.0
 ##                        tt_ib2  = 2.0*t_ib2  /config.R      - 1.0
 ##                        xx_b2   = 2.0*x_b2   /config.R      - 1.0
@@ -321,7 +321,7 @@ class PINNs():
 ##                        a_b2    = self.dnn(torch.cat([tt_b2 , xx_b2], dim=1))
 ##                        a_ib2   = self.dnn(torch.cat([tt_ib2, xx_b2], dim=1))
 
-                x_b3    = np.random.uniform(low=0.9999 * config.R, high=config.R, size=t.shape)  
+                x_b3    = np.random.uniform(low=0.9999 * config.R, high=config.R, size=t.shape)
                 x_b3    = torch.tensor(x_b3, dtype=torch.float32, device=device, requires_grad=True)
                 xx_b3   = 0.5*(2.0*x_b3   /config.R      - 1.0)
                 a_b3    = self.dnn(torch.cat([tt,   xx_b3], dim=1))
@@ -395,7 +395,7 @@ class PINNs():
 ##                if t_b2 is None:
 ##                        t_b2 = torch.zeros_like(t)
 ##                        a_0, a_0_r, a, a_t, a_r, a_i, a_i_r, a_b, a_b_t, a_ib, a_b2_r, a_ib2_r, a_b_0, a_b_0_r, a_b2, a_ib2, a_b2_t, a_b3_r, a_ib3_r = self.net_a(t, x)
-##                
+##
 ##                else:
 ##                        a_0, a_0_r, a, a_t, a_r, a_i, a_i_r, a_b, a_b_t, a_ib, a_b2_r, a_ib2_r, a_b_0, a_b_0_r, a_b2, a_ib2, a_b2_t, a_b3_r, a_ib3_r = self.net_a(t, x, t_b2, x_b2)
         def net_f(self, t, x):
@@ -407,7 +407,7 @@ class PINNs():
                 e   = a_0  [:,0:1] + x*(a  [:,0:1]-a_i[:,0:1])
                 e_t =                x* a_t[:,0:1]
                 e_r = a_0_r[:,0:1] +   (a  [:,0:1]-a_i[:,0:1]) + x*(a_r[:,0:1]-a_i_r[:,0:1])
-                
+
 
 # u^r, u^r_t, u^r_r
 # Boundary: lim_{r \to 0} \partial_r u^r = finite
@@ -419,7 +419,7 @@ class PINNs():
                 ur_t    = x * ur_t_or
                 ur_r    =   (a  [:,1:2]-a_i  [:,1:2]) -   (a_b  [:,1:2]-a_ib[:,1:2])\
                         + x*(a_r[:,1:2]-a_i_r[:,1:2])
-                        
+
 
 # u^\theta, u^\theta_t, u^\theta_r
 # Boundary: lim_{r \to 0} \partial_t u^th = finite
@@ -445,21 +445,21 @@ class PINNs():
                 phi      = x * phi_or
                 phi_t_or =  a_t[:,4:5]             -  a_b_t[:,4:5]
                 phi_t    = x * phi_t_or
-                phi_r    =   (a  [:,4:5]-a_i  [:,4:5]) -   (a_b  [:,1:2]-a_ib[:,4:5])\
+                phi_r    =   (a  [:,4:5]-a_i  [:,4:5]) -   (a_b  [:,4:5]-a_ib[:,4:5])\
                          + x*(a_r[:,4:5]-a_i_r[:,4:5])
 
 
 # u^t, u^t_t, u^t_
-                ut            = torch.sqrt(1 + ur**2 + x*x*uth**2)                
+                ut            = torch.sqrt(1 + ur**2 + x*x*uth**2)
                 ut_ut_t       = ur*ur_t + x*x*uth*uth_t
                 ut_ut_r       = ur*ur_r + x*x*uth*uth_r + x * uth**2
 
 
 # De, Du^r, Du^theta, D\ometa^3, Dphi^{r \theta}
-                De   = ut * e_t   + ur * e_r  
-                Dur  = ut * ur_t  + ur * ur_r 
+                De   = ut * e_t   + ur * e_r
+                Dur  = ut * ur_t  + ur * ur_r
                 Duth = ut * uth_t + ur * uth_r
-                Dphi = ut * phi_t + ur * phi_r         
+                Dphi = ut * phi_t + ur * phi_r
 
 
 # Du^t
@@ -470,12 +470,12 @@ class PINNs():
 
 # \partial_\mu \phi^{\mu \nu}, u_\nu \partial_\mu \phi^{\mu \nu}
                 ut_ut_ut_par_phir      = x*x*phi*( uth*ut_ut_t     - ut*ut*uth_t    ) - x*x*ut*ut*uth*phi_t
-                ut_ut_ut_par_phith    =     phi   *(-ur *ut_ut_t + ut*ut* ur_t) + ut*ut*ur *phi_t    + ut*ut*ut*phi_r 
+                ut_ut_ut_par_phith    =     phi   *(-ur *ut_ut_t + ut*ut* ur_t) + ut*ut*ur *phi_t    + ut*ut*ut*phi_r
                 ut_ut_u_par_phi      = -2*x*ut*ut*uth*phi     + x*x*phi   *(uth*ut_ut_r + ut*uth*ur_t - ut*ut*uth_r - ut*ur*uth_t)
 
 # R
                 if config.SWITCH_LOSS2 == 0:
-                        Rd = torch.zeros((t.shape[0], 7)).to(device)            
+                        Rd = torch.zeros((t.shape[0], 7)).to(device)
                 else:
                         Rd = torch.zeros((t.shape[0], 8)).to(device)
                 Rd[:,0:1] = De + 4/3*e*(ut_theta/ut+ut*ur_or) - ut_ut_u_par_phi/ut/ut
@@ -484,7 +484,7 @@ class PINNs():
 
                 Rd[:,2:3] = e*(Duth + 2*ur_or*uth) + 0.25*uth*De\
                           + 3*0.25*uth*ut_ut_u_par_phi/ut/ut + 3*0.25*ut_ut_ut_par_phith/ut/ut/ut +  3*0.25*phi_or
-                        
+
                 Rd[:,3:4] = om_t_or + 2*phi
 
                 ut_Dut = ur*Dur + x*x*uth*Duth + x*ur*uth**2
@@ -513,15 +513,15 @@ class PINNs():
                 Rd[:,5:6] = ur_r
                 Rd[:,6:7] = phi_r
 
-##                Rd_b2 = torch.zeros((t_b2.shape[0], 4)).to(device)            
-##                if config.SWITCH_LOSS != 0:                        
+##                Rd_b2 = torch.zeros((t_b2.shape[0], 4)).to(device)
+##                if config.SWITCH_LOSS != 0:
 ##                        e     = a_b_0[0:1]   + config.R * (a_b2  [:,0:1]-a_ib2[:,0:1])
 ##                        e_t   =                config.R *  a_b2_t[:,0:1]
 ##                        e_r   = a_b_0_r[0:1] +            (a_b2  [:,0:1]-a_ib2[:,0:1]) + config.R * (a_b2_r[:,0:1]-a_ib2_r[:,0:1])
 ##                        uth   = a_b_0  [2:3] + config.R * (a_b2  [:,2:3]-a_ib2[:,2:3])
 ##                        uth_t =                config.R *  a_b2_t[:,2:3]
 ##                        uth_r = a_b_0_r[2:3] +            (a_b2  [:,2:3]-a_ib2[:,2:3]) + config.R * (a_b2_r[:,2:3]-a_ib2_r[:,2:3])
-##                        ut    = torch.sqrt(1 + config.R*config.R*uth**2)      
+##                        ut    = torch.sqrt(1 + config.R*config.R*uth**2)
 ##
 ##                        Rd_b2[:,0:1] =  ut*ut*e_t         + 4/3*e*config.R*config.R*uth*uth_t # e_t, uth_t
 ##                        Rd_b2[:,1:2] = -e*config.R*uth**2 + 0.25    *e_r                      # e_r
@@ -563,10 +563,10 @@ class PINNs():
 ##                Rd_pred, Rd_b2_pred = self.net_f(t_batch, x_batch, t_batch2, x_batch2)
 ##                Rd_pred, Rd_b2_pred = self.net_f(t_batch, x_batch)
                 Rd_pred = self.net_f(t_batch, x_batch)
-                
+
 
                 if config.ang_con == 0:
-                        loss_Rd_2 = torch.mean(Rd_pred**2, dim=0)    
+                        loss_Rd_2 = torch.mean(Rd_pred**2, dim=0)
 
 ###################################################################################################
 ##                        loss_j = torch.mean(loss_Rd_2)
@@ -577,14 +577,14 @@ class PINNs():
                         Nt  = round(config.t_max/(config.t_bin/config.N_ang_con))
                         Nt, Nr = t_values.shape[0], r_values.shape[0]
                         T_in = t_values.view(Nt,1).repeat(1, Nr).view(-1,1)   # (Nt*Nr,1)
-                        R_in = r_values.view(1,Nr).repeat(Nt,1).view(-1,1)    # (Nt*Nr,1)                       
+                        R_in = r_values.view(1,Nr).repeat(Nt,1).view(-1,1)    # (Nt*Nr,1)
 
-                        j_all = self.net_j(T_in, R_in)       # (Nt*Nr,1), requires_grad=True                    
-                        weights = 2 * np.pi * R_in * dr # (Nt*Nr,1)                     
+                        j_all = self.net_j(T_in, R_in)       # (Nt*Nr,1), requires_grad=True
+                        weights = 2 * np.pi * R_in * dr # (Nt*Nr,1)
                         j_all = (j_all * weights).view(Nt, Nr)
-                        j_total = j_all.sum(dim=1)     # shape (Nt,)                    
+                        j_total = j_all.sum(dim=1)     # shape (Nt,)
                         j0 = j_total[0].detach()
-                        loss_j = torch.mean((j_total[1:]/j0 - 1.0)**2)                     
+                        loss_j = torch.mean((j_total[1:]/j0 - 1.0)**2)
 ###################################################################################################
 
                 else:
@@ -595,16 +595,16 @@ class PINNs():
                         Nt  = round(config.t_max/(config.t_bin/config.N_ang_con))
                         Nt, Nr = t_values.shape[0], r_values.shape[0]
                         T_in = t_values.view(Nt,1).repeat(1, Nr).view(-1,1)   # (Nt*Nr,1)
-                        R_in = r_values.view(1,Nr).repeat(Nt,1).view(-1,1)    # (Nt*Nr,1)                       
+                        R_in = r_values.view(1,Nr).repeat(Nt,1).view(-1,1)    # (Nt*Nr,1)
 
-                        j_all = self.net_j(T_in, R_in)       # (Nt*Nr,1), requires_grad=True                    
-                        weights = 2 * np.pi * R_in * dr # (Nt*Nr,1)                     
+                        j_all = self.net_j(T_in, R_in)       # (Nt*Nr,1), requires_grad=True
+                        weights = 2 * np.pi * R_in * dr # (Nt*Nr,1)
                         j_all = (j_all * weights).view(Nt, Nr)
-                        j_total = j_all.sum(dim=1)     # shape (Nt,)                    
+                        j_total = j_all.sum(dim=1)     # shape (Nt,)
                         j0 = j_total[0].detach()
-                        loss_j = torch.mean((j_total[1:]/j0 - 1.0)**2)                     
+                        loss_j = torch.mean((j_total[1:]/j0 - 1.0)**2)
 
-                        loss_Rd_2_dot = torch.mean(Rd_pred**2, dim=0)    
+                        loss_Rd_2_dot = torch.mean(Rd_pred**2, dim=0)
                         loss_Rd_2     = torch.cat([loss_Rd_2_dot, loss_j.unsqueeze(0)], dim=0)
 
                 loss_Rd_dot = loss_Rd_2.clone()
@@ -650,7 +650,7 @@ class PINNs():
 ##                                loss = torch.mean( 0.5 * torch.exp(-self.log_sigma_Rd_uw) * loss_Rd_2  + 0.5 * self.log_sigma_Rd_uw )
 ##                                loss_Rd_dot  = torch.cat([loss_Rd_dot,torch.exp(self.log_sigma_Rd_uw)], dim=0)
 
-                                delta = math.log(100.0)            
+                                delta = math.log(100.0)
                                 alpha = self.log_sigma_Rd_uw
                                 #min_alpha, _ = alpha[:5].min(dim=0, keepdim=True)
 #                                max_alpha = min_alpha + delta
@@ -679,7 +679,7 @@ class PINNs():
 ##
 ##                                        loss += torch.mean( 0.5 * torch.exp(-beta_clamped) * loss_Rd_b2_2 + 0.5 * beta_clamped )
 ##                                        loss_Rd_dot = torch.cat([loss_Rd_dot,loss_Rd_b2_2,torch.exp(beta),torch.exp(beta_clamped)], dim=0)
-##                                #################             
+##                                #################
 ##
 ##                                loss_Rd_b2 = torch.mean(loss_Rd_b2_2)
 
@@ -693,7 +693,7 @@ class PINNs():
 
 
                 # GradScalerのインスタンスを作成
-                scaler = torch.cuda.amp.GradScaler()            
+                scaler = torch.cuda.amp.GradScaler()
                 file_name = f"training_log_{current_timestamp}.txt"
                 with open(file_name, 'a') as log_file:
 
@@ -704,7 +704,7 @@ class PINNs():
                         it = torch.arange(Nt-1, device=device, dtype=torch.float32)
                         t_values = (it + torch.rand(Nt-1, device=device)) * delta_t
                         t_values = torch.cat((t_values, torch.tensor([config.t_max], device=device)))
-                        
+
                         Nr = 1000
                         dr = config.R / Nr
                         r_values = torch.linspace(0.5*dr, config.R-0.5*dr, Nr, device=device)
@@ -712,11 +712,11 @@ class PINNs():
                         check = 1
                         if config.EPOCHS > 100: check = config.EPOCHS//100
 
-                        for epoch in range(config.EPOCHS): 
+                        for epoch in range(config.EPOCHS):
 
 ##                                for (t_batch, x_batch), (t_batch2, x_batch2) in zip(dataloader, dataloader2):
                                 for t_batch, x_batch in dataloader:
-                                                                        
+
                                         t_batch  = t_batch.to(device)
                                         x_batch  = x_batch.to(device)
 ##                                        t_batch2 = t_batch2.to(device)
@@ -724,20 +724,20 @@ class PINNs():
 
 
                                         # モデルを訓練モードに設定
-                                        self.dnn.train()           
+                                        self.dnn.train()
                                         # 勾配のリセット
-                                        self.optimizer.zero_grad()         
+                                        self.optimizer.zero_grad()
                                         # 混合精度での順伝播と損失計算
                                         with torch.cuda.amp.autocast():
                                             # 損失関数を計算（ミニバッチのデータを使用）
 ##                                            self.loss, self.loss_1, self.loss_2, self.loss_Rd_dot, self.loss_j = self.loss_func(t_batch,x_batch,t_batch2,x_batch2,t_values,r_values,Nr)
                                             self.loss, self.loss_1, self.loss_Rd_dot, self.loss_j = self.loss_func(t_batch,x_batch,t_values,r_values,Nr)
                                         # 損失に基づいて勾配を計算（勾配スケーリングを適用）
-                                        scaler.scale(self.loss).backward()         
+                                        scaler.scale(self.loss).backward()
                                         # オプティマイザを使ってモデルのパラメータを更新
-                                        scaler.step(self.optimizer)           
+                                        scaler.step(self.optimizer)
                                         # 更新
-                                        scaler.update()            
+                                        scaler.update()
                                 # 10エポックごとに損失を表示
 
                                 config.count_epoch = epoch
@@ -769,7 +769,7 @@ class PINNs():
                 x = torch.tensor(x, requires_grad=True).float().to(device)  # xをGPUに移動
 
                 # eval() 関数で評価モードに設定し、パラメータの更新が行われないようにします。
-                self.dnn.eval()         
+                self.dnn.eval()
 #                a_0, a_0_r, a, a_t, a_r, a_i, _, a_b, _, a_ib, *_ = self.net_a(t,x)
                 a_0, a_0_r, a, a_t, a_r, a_i, a_i_r, a_b, a_b_t, a_ib, _, _ = self.net_a(t, x)
 
@@ -782,7 +782,7 @@ class PINNs():
 # u^t
                 ut    = torch.sqrt(1 + ur**2 + x*x*uth**2)
 
-# T^tt   
+# T^tt
                 Ttt = e*ut**2 + e/3 * (ut**2-1.0)
 
 # J^txy = sigma^{txy} + ( xT^ty - yT^tx ) = omega^3 + r^2 T^{t \theta}
@@ -801,11 +801,11 @@ class PINNs():
                 ur_r    =   (a  [:,1:2]-a_i  [:,1:2]) -   (a_b  [:,1:2]-a_ib[:,1:2])\
                         + x*(a_r[:,1:2]-a_i_r[:,1:2])
                 ur_t    = x * ( a_t[:,1:2] - a_b_t[:,1:2] )
-                        
+
                 uth_t =                x* a_t[:,2:3]
                 uth_r = a_0_r[:,2:3] +   (a  [:,2:3]-a_i[:,2:3]) + x*(a_r[:,2:3]-a_i_r[:,2:3])
 
-                Dur  = ut * ur_t  + ur * ur_r 
+                Dur  = ut * ur_t  + ur * ur_r
                 Duth = ut * uth_t + ur * uth_r
 
                 vorticity     = (ur*Duth-uth*Dur+uth_r+x*uth**3 + 2.0*uth/x)
@@ -849,7 +849,7 @@ for file_number_dot in range(2, 3):
         if i_length == 2: config.t_max2  = 0.5
         config.gamma   = i_gamma * 2.0
         config.tau_phi = config.gamma
-        
+
         config.t_max   = 0.4
         if file_number_dot==0: config.t_max = 0.2
         if file_number_dot==1: config.t_max = 0.2
@@ -893,7 +893,7 @@ for file_number_dot in range(2, 3):
         if file_number_dot==7: file_number = 75 + 1000 * round(i_SWITCH_LOSS2 + 2*i_LOSS_TYPE + 8*i_ang_con + 16*i_SWITCH_INIT)
         if file_number_dot==8: file_number = 25 + 1000 * round(i_SWITCH_LOSS2 + 2*i_LOSS_TYPE + 8*i_ang_con + 16*i_SWITCH_INIT)
         if file_number_dot==9: file_number = 25 + 1000 * round(i_SWITCH_LOSS2 + 2*i_LOSS_TYPE + 8*i_ang_con + 16*i_SWITCH_INIT)
-        
+
         pinns = torch.load(f'model_orbinit.pth', map_location=torch.device('cuda'))
 
         file_number = file_number+7310*00
@@ -910,21 +910,19 @@ for file_number_dot in range(2, 3):
         print(file_number_dot, file_number)
 
         fig_1 = 1 # Heatmap in t-r plane
-        fig_2 = 0 # r-distribution
-        fig_3 = 0 # Time Evolution of Energy and Total Angular Momentum
-        fig_4 = 0 # Time Evolution of Total Angular Momentum for devided spatial region
-        fig_5 = 0 # Evaluate Violation
+        fig_2 = 1 # Time Evolution of Energy and Total Angular Momentum
+        fig_3 = 0 # Evaluate Violation
         print_pdf = 1
         print_dat = 1
 
-###################### 
+######################
 # Heatmap in t-r plane
         if fig_1 == 1:
                 print("Start: Heatmap in t-r plane")
 ######################
                 # make spacetime points
-                t_values = np.linspace(0.0 * config.t_max, config.t_max, 100)
-                r_values = np.linspace(0.0001 * config.R, config.R, 400)
+                t_values = np.linspace(0.0 * config.t_max, config.t_max, 75)
+                r_values = np.linspace(0.0001 * config.R, config.R, 200)
                 t_grid, r_grid = np.meshgrid(t_values, r_values)
                 t_current = t_grid.flatten().reshape(-1, 1)
                 r_current = r_grid.flatten().reshape(-1, 1)
@@ -935,7 +933,7 @@ for file_number_dot in range(2, 3):
 
                 # change data of  hydrodynamic variables for plot
                 r_tensor = torch.tensor(r_current, device=phi.device, dtype=phi.dtype)
-                phixy    = phi * r_tensor                
+                phixy    = phi * r_tensor
                 vorxy    = vor * r_tensor
                 potxy    = pot * r_tensor
                 e_all     = e  [:].reshape(len(r_values), len(t_values))
@@ -975,7 +973,7 @@ for file_number_dot in range(2, 3):
                 def plot_heatmap(
                     data, vmax_real, vmin_real, norm, file_name,
                     label_text, label_kwargs, r_values, t_values, print_pdf, tick_decimals, label_coords,
-                    x_shift, tick_scientific, 
+                    x_shift, tick_scientific,
                 ):
                     fig, ax = plt.subplots(figsize=(8,6))
                     im = ax.imshow(
@@ -984,7 +982,7 @@ for file_number_dot in range(2, 3):
                         origin='lower',
                         extent=[r_values[0], r_values[-1], t_values[0], t_values[-1]],
                         cmap='viridis',
-                        norm=norm,    
+                        norm=norm,
                     )
                     ax.set_box_aspect(1)
 
@@ -1027,9 +1025,9 @@ for file_number_dot in range(2, 3):
                     fig.subplots_adjust(left=new_left, right=new_right) # ★ leftとrightの両方を指定
 
                     # ファイルの保存
-                    fig.savefig(file_name + ".png")
+                    fig.savefig(file_name + "_v2.png")
                     if print_pdf == 1:
-                        fig.savefig(file_name + ".pdf")
+                        fig.savefig(file_name + "_v2.pdf")
 
                     plt.close(fig)
 
@@ -1046,7 +1044,7 @@ for file_number_dot in range(2, 3):
                 tick_decimals = 3
                 tick_scientific = False
                 x_shift         = -0.05
-                file_name       = f"e_heatmap_{file_number}" 
+                file_name       = f"e_heatmap_{file_number}"
                 plot_heatmap(data, vmax_real, vmin_real, norm, file_name, label_text, label_kwargs, r_values, t_values, print_pdf, tick_decimals, label_coords, x_shift, tick_scientific)
 
               # plot ur
@@ -1061,7 +1059,7 @@ for file_number_dot in range(2, 3):
                 tick_decimals = 3
                 tick_scientific = False
                 x_shift         = -0.05
-                file_name       = f"ur_heatmap_{file_number}" 
+                file_name       = f"ur_heatmap_{file_number}"
                 plot_heatmap(data, vmax_real, vmin_real, norm, file_name, label_text, label_kwargs, r_values, t_values, print_pdf, tick_decimals, label_coords, x_shift, tick_scientific)
               # plot uth
                 data          = uth_plot
@@ -1069,13 +1067,13 @@ for file_number_dot in range(2, 3):
                 vmin_real     = 0.0 # np.min(data) # for color range
                 vmax_sym      = max(abs(vmin_real), abs(vmax_real))
                 norm          = Normalize(vmin=-vmax_sym, vmax=vmax_sym)
-                label_text    = r"$u^\theta$"
+                label_text    = r"$u^\varphi$"
                 label_kwargs  = {"fontsize": 40,"rotation": 0,"labelpad": 20}
                 label_coords  = (-2.5, 1.125)
                 tick_decimals = 2
                 tick_scientific = False
                 x_shift         = -0.05
-                file_name       = f"uth_heatmap_{file_number}" 
+                file_name       = f"uth_heatmap_{file_number}"
                 plot_heatmap(data, vmax_real, vmin_real, norm, file_name, label_text, label_kwargs, r_values, t_values, print_pdf, tick_decimals, label_coords, x_shift, tick_scientific)
               # plot om
                 data          = om_plot
@@ -1089,7 +1087,7 @@ for file_number_dot in range(2, 3):
                 tick_decimals = 2
                 tick_scientific = False
                 x_shift         = -0.05
-                file_name       = f"om_heatmap_{file_number}" 
+                file_name       = f"om_heatmap_{file_number}"
                 plot_heatmap(data, vmax_real, vmin_real, norm, file_name, label_text, label_kwargs, r_values, t_values, print_pdf, tick_decimals, label_coords, x_shift, tick_scientific)
               # plot orb
                 data          = orb_plot
@@ -1103,7 +1101,7 @@ for file_number_dot in range(2, 3):
                 tick_decimals = 2
                 tick_scientific = False
                 x_shift         = -0.05
-                file_name       = f"orb_heatmap_{file_number}" 
+                file_name       = f"orb_heatmap_{file_number}"
                 plot_heatmap(data, vmax_real, vmin_real, norm, file_name, label_text, label_kwargs, r_values, t_values, print_pdf, tick_decimals, label_coords, x_shift, tick_scientific)
               # plot phixy
                 data          = phixy_plot
@@ -1117,7 +1115,7 @@ for file_number_dot in range(2, 3):
                 tick_decimals = 2
                 tick_scientific = False
                 x_shift         = -0.05
-                file_name     = f"phixy_heatmap_{file_number}" 
+                file_name     = f"phixy_heatmap_{file_number}"
                 plot_heatmap(data, vmax_real, vmin_real, norm, file_name, label_text, label_kwargs, r_values, t_values, print_pdf, tick_decimals, label_coords, x_shift, tick_scientific)
               # plot vorxy
                 data          = 0.5*vorxy_plot
@@ -1131,7 +1129,7 @@ for file_number_dot in range(2, 3):
                 tick_decimals = 1
                 tick_scientific = False
                 x_shift         = -0.05
-                file_name     = f"vorxy_heatmap_{file_number}" 
+                file_name     = f"vorxy_heatmap_{file_number}"
                 plot_heatmap(data, vmax_real, vmin_real, norm, file_name, label_text, label_kwargs, r_values, t_values, print_pdf, tick_decimals, label_coords, x_shift, tick_scientific)
               # plot potxy
                 data          = 2 * potxy_plot
@@ -1145,7 +1143,103 @@ for file_number_dot in range(2, 3):
                 tick_decimals = 2
                 tick_scientific = False
                 x_shift         = -0.05
-                file_name     = f"potxy_heatmap_{file_number}" 
+                file_name     = f"potxy_heatmap_{file_number}"
                 plot_heatmap(data, vmax_real, vmin_real, norm, file_name, label_text, label_kwargs, r_values, t_values, print_pdf, tick_decimals, label_coords, x_shift, tick_scientific)
 
 
+######################################################
+# Time Evolution of Energy and Total Angular Momentum
+        if fig_2 == 1:
+                print("Start: Time Evolution of Energy and Total Angular Momentum")
+######################################################
+
+                t_values = np.linspace(0, config.t_max, 100)  # tau_maxまでの100サンプルの時間
+                Nr       = 2000  # グリッドサイズ（例: 100）
+                dr       = config.R/Nr
+                r_values = np.linspace(0.5*dr, config.R-0.5*dr, Nr)
+
+                e_total_values  = []
+                l_total_values  = []
+                s_total_values  = []
+
+                for t_val in t_values:
+                        e_sum  = 0.0  # 総和を初期化
+                        l_sum  = 0.0  # 総和を初期化
+                        s_sum  = 0.0  # 総和を初期化
+
+                        t_current = np.full(Nr, t_val, dtype=np.float32).reshape(-1, 1)
+                        r_current = r_values.astype(np.float32).reshape(-1, 1)
+
+                        _, _, _, _, _, e, orb, spin, *_ = pinns.predict(t_current, r_current)
+
+                        e_sum = np.sum(e.detach().cpu().numpy()    * 2 * np.pi * r_current * dr)
+                        l_sum = np.sum(orb.detach().cpu().numpy()  * 2 * np.pi * r_current * dr)
+                        s_sum = np.sum(spin.detach().cpu().numpy() * 2 * np.pi * r_current * dr)
+
+                        e_total_values.append(e_sum)
+                        l_total_values.append(l_sum)
+                        s_total_values.append(s_sum)
+
+
+                if print_dat ==1:
+                        np.savetxt(f"E_total_evo_{file_number}_v2.dat", np.column_stack((t_values, e_total_values)), header="Time t, Energy", delimiter=",", fmt="%.6e")
+                        np.savetxt(f"L_total_evo_{file_number}_v2.dat", np.column_stack((t_values, np.array(l_total_values) + np.array(s_total_values), l_total_values, s_total_values)), header="Time t, Angular Momentum", delimiter=",", fmt="%.6e")
+                        np.savetxt("Ltot_orbinit_v2.dat",np.column_stack((t_values, np.array(l_total_values) + np.array(s_total_values), l_total_values, s_total_values)),header="Time t, Angular Momentum",fmt="%.6e")
+######################################################
+######################################################
+
+
+
+######################
+# Heatmap in t-r plane
+        if fig_3 == 1:
+                print("Start: Evaluate Violation")
+######################
+                t_values = np.linspace(0.0 * config.t_max, config.t_max, 100)
+                r_values = np.linspace(0.0001 * config.R, config.R, 250)
+                t_grid, r_grid = np.meshgrid(t_values, r_values)
+                t_current = t_grid.flatten().reshape(-1, 1)
+                r_current = r_grid.flatten().reshape(-1, 1)
+
+                _, _, _, _, _, _, _, _, Rd, _, _ = pinns.predict(t_current, r_current)
+
+#               cmap_blue_yellow = LinearSegmentedColormap.from_list( 'blue_yellow', ['blue', 'yellow'])
+                norm = LogNorm(vmin=1e-4, vmax=1e-1)
+
+
+
+                Rd_all  = Rd[:, 7].reshape(len(r_values), len(t_values))
+                Rd_all_cpu = Rd_all.detach().cpu().numpy()
+                Rd_plot = Rd_all_cpu.T
+
+
+                # t に沿って積分して平均化
+                Rd_integrated = np.trapz(Rd_all_cpu, x=t_values, axis=1)
+                Rd_avg = Rd_integrated / config.t_max   # 各 r に対する値
+
+                out_data_r = np.column_stack([r_values, Rd_avg])
+                np.savetxt(f"Rd_avg_r_{file_number}_v2.dat", out_data_r,
+                           fmt="%.6e")
+
+                # --- r方向のフーリエ変換 ---
+                # np.fft.fft は離散フーリエ変換、np.fft.fftfreqで波数軸をつくる
+                Rd_fft = np.fft.fft(Rd_avg)
+                freqs = np.fft.fftfreq(len(r_values), d=(r_values[1] - r_values[0]))  # d = Δr
+
+
+                # パワースペクトル（実数化）
+                spectrum = np.abs(Rd_fft)**2
+
+                # 片側スペクトラムだけ残す（k >= 0）
+                mask = freqs >= 0
+                freqs_pos = freqs[mask]
+                spectrum_pos = spectrum[mask]
+
+
+
+                out_data = np.column_stack([freqs_pos, spectrum_pos])
+                np.savetxt(f"Rd_spectrum_{file_number}_v2.dat", out_data,
+                           fmt="%.6e")
+
+
+                exit()

@@ -24,49 +24,50 @@ set tics font "Arial, 20"
 #set format y "%.0e"
 #set datafile separator ","
 set xlabel "Number of iterations" font "Arial, 40"
-set xrange [0:20000]
-set xtics ("0" 0, "0.5 {/Symbol \\264} 10^{4}" 5000, "1 {/Symbol \\264} 10^{4}" 10000, "1.5 {/Symbol \\264} 10^{4}" 15000, "2 {/Symbol \\264} 10^{4}" 20000)
+set xrange [0:150000]
+set xtics ("0" 0, "0.5 {/Symbol \\264} 10^{5}" 50000, "1 {/Symbol \\264} 10^{5}" 100000, "1.5 {/Symbol \\264} 10^{5}" 150000)
 set xtics font "Arial, 30"
 set ytics font "Arial, 30"
 ##################################################################
 
 unset key
-set output "loss_v3.eps"
-#set output "loss.pdf"
+#set output "loss_long.eps"
+set output "loss_long.pdf"
 set ylabel "L({/Symbol y},{/Symbol s})" font "Arial, 40"
 set yrange[-6:1]
 plot\
-"Resi_orbinit.dat" u 1:2 w l lw 5 lc 7 notitle
-set output  
+"training_log_SpinU_5.txt" u 1:3 w l lw 5 lc 7 notitle
+set output
 unset yrange
 
 set key above
 set key  font "Arial, 30"
-set output "Rge_v3.eps"
-#set output "Rge.pdf"
+#set output "Rge_long.eps"
+set output "Rge_long.pdf"
 set ylabel "~R{.6-}^{G.E.}_{sum}({/Symbol y})" font "Arial, 40"
 set logscale y
 set format y "10^{%L}"
 plot\
-"Resi_orbinit.dat" u 1:(0.2*($5+$6+$7+$8+$9)) w l lw 5 lc 7 notitle
-set output  
+"training_log_SpinU_5.txt" u 1:(0.2*($6+$7+$8+$9+$10)) w l lw 5 lc 7 notitle
+set output
 unset key
+
 
 unset format y
 unset logscale y
 set datafile separator ","
 L_ini = 9.770887e-02
-set output "Levo_v3.eps"
-#set output "Levo.pdf"
+#set output "Levo_long.eps"
+set output "Levo_long.pdf"
 set xlabel "t" font "Arial, 30"
 set ylabel "Angular Momentum" font "Arial, 30"
 set datafile separator whitespace
 set xrange [0:0.4]
+set yrange [0.997:1.003]
 set xtics ("0" 0, "0.1" 0.1, "0.2" 0.2, "0.3" 0.3, "0.4" 0.4)
 plot\
-"Levo_orbinit.dat"  u 1:($2/L_ini) w l lw 7 lc 7 notitle
-set output  
+"Ltot_orbinit_v2.dat"  u 1:($2/L_ini) w l lw 7 lc 7 notitle
+set output
 unset label 1
 
 exit
-
