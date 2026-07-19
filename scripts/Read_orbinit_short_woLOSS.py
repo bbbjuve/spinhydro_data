@@ -47,7 +47,7 @@ class Config: # Parameterのセット
         tau_bu       = zeta /e_ic       # 緩和時間 [GeV unit]
         tau_phi      = gamma/e_ic       # 緩和時間 [GeV unit]
         factor_s     = 6/19 * np.sqrt(29/15) * np.pi
-        N_LAYER          =    5            # ニューラルネットワークの層の数
+        N_LAYER          =    3            # ニューラルネットワークの層の数
         NEURON_PER_LAYER =  250            # 64*ne_x*nb_y # 各層に含まれるニューロンの数
         Np               =  25000           # 160000 PINNsで学習に使用するデータ点の数（コロケーションポイント）
         EPOCHS           =  1000           # 1000    # 学習におけるエポック数（全データセットに対して学習する回数）
@@ -445,7 +445,7 @@ class PINNs():
                 phi      = x * phi_or
                 phi_t_or =  a_t[:,4:5]             -  a_b_t[:,4:5]
                 phi_t    = x * phi_t_or
-                phi_r    =   (a  [:,4:5]-a_i  [:,4:5]) -   (a_b  [:,1:2]-a_ib[:,4:5])\
+                phi_r    =   (a  [:,4:5]-a_i  [:,4:5]) -   (a_b  [:,4:5]-a_ib[:,4:5])\
                          + x*(a_r[:,4:5]-a_i_r[:,4:5])
 
 
@@ -815,11 +815,12 @@ class PINNs():
 
 
 
-for file_number_dot in range(8, 9):
+# モデル全体をロード
+for file_number_dot in range(1, 2):
         config.SWITCH_LOSS2 = 1
         size_Rd = 7 + config.SWITCH_LOSS2
 
-        i_length = 1 # 0: short, 1: middle, 2: long
+        i_length = 0 # 0: short, 1: middle, 2: long
         if file_number_dot==0: i_length = 0
         if file_number_dot==1: i_length = 0
         if file_number_dot==2: i_length = 1
@@ -893,7 +894,7 @@ for file_number_dot in range(8, 9):
         if file_number_dot==8: file_number = 25 + 1000 * round(i_SWITCH_LOSS2 + 2*i_LOSS_TYPE + 8*i_ang_con + 16*i_SWITCH_INIT)
         if file_number_dot==9: file_number = 25 + 1000 * round(i_SWITCH_LOSS2 + 2*i_LOSS_TYPE + 8*i_ang_con + 16*i_SWITCH_INIT)
 
-        pinns = torch.load(f'model_orbinit_ideal.pth', map_location=torch.device('cuda'))
+        pinns = torch.load(f'model_orbinit_short_woLOSS.pth', map_location=torch.device('cuda'))
 
         file_number = file_number+7310*00
         if file_number_dot==0: file_number = file_number+7310*100000 # short
@@ -908,9 +909,9 @@ for file_number_dot in range(8, 9):
         if file_number_dot==9: file_number = file_number+7314*100000 # long2, spin init., ideal
         print(file_number_dot, file_number)
 
-        fig_1 = 1 # Heatmap in t-r plane
-        fig_2 = 1 # Time Evolution of Energy and Total Angular Momentum
-        fig_3 = 0 # Evaluate Violation
+        fig_1 = 0 # Heatmap in t-r plane
+        fig_2 = 0 # Time Evolution of Energy and Total Angular Momentum
+        fig_3 = 1 # Evaluate Violation
         print_pdf = 1
         print_dat = 1
 
@@ -1024,82 +1025,125 @@ for file_number_dot in range(8, 9):
                     fig.subplots_adjust(left=new_left, right=new_right) # ★ leftとrightの両方を指定
 
                     # ファイルの保存
-                    fig.savefig(file_name + "_v2.png")
+                    fig.savefig(file_name + ".png")
                     if print_pdf == 1:
-                        fig.savefig(file_name + "_v2.pdf")
+                        fig.savefig(file_name + ".pdf")
 
                     plt.close(fig)
 
 
                 # plot e
-                data            = e_plot
-                vmax_real       = np.max(data) # for value range
-                vmin_real       = 0.990 # np.min(data) # for value range
-                vmax_sym        = max(abs(vmin_real-1), abs(vmax_real-1))
-                norm            = Normalize(vmin=1-vmax_sym, vmax=1+vmax_sym) # for color range
-                label_text      = r"$e$"
-                label_kwargs    = {"fontsize": 40,"rotation": 0,"labelpad": 20}
-                label_coords    = (-2.5, 1.125)
-                tick_decimals   = 3
+                data          = e_plot
+                vmax_real     = np.max(data) # for value range
+                vmin_real     = np.min(data) # for value range
+                vmax_sym      = max(abs(vmin_real-1), abs(vmax_real-1))
+                norm          = Normalize(vmin=1-vmax_sym, vmax=1+vmax_sym) # for color range
+                label_text    = r"$e$"
+                label_kwargs  = {"fontsize": 40,"rotation": 0,"labelpad": 20}
+                label_coords  = (-2.5, 1.125)
+                tick_decimals = 3
                 tick_scientific = False
                 x_shift         = -0.05
                 file_name       = f"e_heatmap_{file_number}"
                 plot_heatmap(data, vmax_real, vmin_real, norm, file_name, label_text, label_kwargs, r_values, t_values, print_pdf, tick_decimals, label_coords, x_shift, tick_scientific)
+
               # plot ur
-                data            = ur_plot
-                vmax_real       =  0.005 # np.max(data) # for color range
-                vmin_real       =  0.000 # np.min(data) # for color range
-                vmax_sym        = max(abs(vmin_real), abs(vmax_real))
-                norm            = Normalize(vmin=-vmax_sym, vmax=vmax_sym)
-                label_text      = r"$u^r$"
-                label_kwargs    = {"fontsize": 40,"rotation": 0,"labelpad": 20}
-                label_coords    = (-2.5, 1.125)
-                tick_decimals   = 3
+                data          = ur_plot
+                vmax_real     =  0.002 # np.max(data) # for color range
+                vmin_real     = -0.01  # np.min(data) # for color range
+                vmax_sym      = max(abs(vmin_real), abs(vmax_real))
+                norm          = Normalize(vmin=-vmax_sym, vmax=vmax_sym)
+                label_text    = r"$u^r$"
+                label_kwargs  = {"fontsize": 40,"rotation": 0,"labelpad": 20}
+                label_coords  = (-2.5, 1.125)
+                tick_decimals = 3
                 tick_scientific = False
                 x_shift         = -0.05
                 file_name       = f"ur_heatmap_{file_number}"
                 plot_heatmap(data, vmax_real, vmin_real, norm, file_name, label_text, label_kwargs, r_values, t_values, print_pdf, tick_decimals, label_coords, x_shift, tick_scientific)
               # plot uth
-                data            = uth_plot
-                vmax_real       = 0.2 # np.max(data) # for color range
-                vmin_real       = 0.0 # np.min(data) # for color range
-                vmax_sym        = max(abs(vmin_real), abs(vmax_real))
-                norm            = Normalize(vmin=-vmax_sym, vmax=vmax_sym)
-                label_text      = r"$u^\varphi$"
-                label_kwargs    = {"fontsize": 40,"rotation": 0,"labelpad": 20}
-                label_coords    = (-2.5, 1.125)
-                tick_decimals   = 2
+                data          = uth_plot
+                vmax_real     = 0.6 # np.max(data) # for color range
+                vmin_real     = 0.0 # np.min(data) # for color range
+                vmax_sym      = max(abs(vmin_real), abs(vmax_real))
+                norm          = Normalize(vmin=-vmax_sym, vmax=vmax_sym)
+                label_text    = r"$u^\theta$"
+                label_kwargs  = {"fontsize": 40,"rotation": 0,"labelpad": 20}
+                label_coords  = (-2.5, 1.125)
+                tick_decimals = 2
                 tick_scientific = False
                 x_shift         = -0.05
                 file_name       = f"uth_heatmap_{file_number}"
                 plot_heatmap(data, vmax_real, vmin_real, norm, file_name, label_text, label_kwargs, r_values, t_values, print_pdf, tick_decimals, label_coords, x_shift, tick_scientific)
               # plot om
-                data            = om_plot
-                vmax_real       = np.max(data) # for color range
-                vmin_real       = np.min(data) # for color range
-                vmax_sym        = max(abs(vmin_real), abs(vmax_real))
-                norm            = Normalize(vmin=vmin_real, vmax=vmax_real)
-                label_text      = r"$S^z$"
-                label_kwargs    = {"fontsize": 40,"rotation": 0,"labelpad": 20}
-                label_coords    = (-2.5, 1.125)
-                tick_decimals   = 0
-                tick_scientific = True
+                data          = om_plot
+                vmax_real     = np.max(data) # for color range
+                vmin_real     = np.min(data) # for color range
+                vmax_sym      = max(abs(vmin_real), abs(vmax_real))
+                norm          = Normalize(vmin=vmin_real, vmax=vmax_real)
+                label_text    = r"$S^z$"
+                label_kwargs  = {"fontsize": 40,"rotation": 0,"labelpad": 20}
+                label_coords  = (-2.5, 1.125)
+                tick_decimals = 2
+                tick_scientific = False
                 x_shift         = -0.05
                 file_name       = f"om_heatmap_{file_number}"
                 plot_heatmap(data, vmax_real, vmin_real, norm, file_name, label_text, label_kwargs, r_values, t_values, print_pdf, tick_decimals, label_coords, x_shift, tick_scientific)
               # plot orb
-                data            = orb_plot
-                vmax_real       = np.max(data) # for color range
-                vmin_real       = 0.00 # np.min(data) # for color range
-                vmax_sym        = max(abs(vmin_real), abs(vmax_real))
-                norm            = Normalize(vmin=vmin_real, vmax=vmax_real)
-                label_text      = r"$L^z$"
-                label_kwargs    = {"fontsize": 40,"rotation": 0,"labelpad": 20}
-                label_coords    = (-2.5, 1.125)
-                tick_decimals   = 2
+                data          = orb_plot
+                vmax_real     = np.max(data) # for color range
+                vmin_real     = 0.00 # np.min(data) # for color range
+                vmax_sym      = max(abs(vmin_real), abs(vmax_real))
+                norm          = Normalize(vmin=vmin_real, vmax=vmax_real)
+                label_text    = r"$L^z$"
+                label_kwargs  = {"fontsize": 40,"rotation": 0,"labelpad": 20}
+                label_coords  = (-2.5, 1.125)
+                tick_decimals = 2
                 tick_scientific = False
                 x_shift         = -0.05
                 file_name       = f"orb_heatmap_{file_number}"
+                plot_heatmap(data, vmax_real, vmin_real, norm, file_name, label_text, label_kwargs, r_values, t_values, print_pdf, tick_decimals, label_coords, x_shift, tick_scientific)
+              # plot phixy
+                data          = phixy_plot
+                vmax_real     = np.max(data) # for color range
+                vmin_real     = np.min(data) # for color range
+                vmax_sym      = max(abs(vmin_real), abs(vmax_real))
+                norm          = Normalize(vmin=vmin_real, vmax=vmax_real)
+                label_text    = r"$\phi^{xy}$"
+                label_kwargs  = {"fontsize": 40,"rotation": 0,"labelpad": 20}
+                label_coords  = (-2.5, 1.125)
+                tick_decimals = 2
+                tick_scientific = False
+                x_shift         = -0.05
+                file_name     = f"phixy_heatmap_{file_number}"
+                plot_heatmap(data, vmax_real, vmin_real, norm, file_name, label_text, label_kwargs, r_values, t_values, print_pdf, tick_decimals, label_coords, x_shift, tick_scientific)
+              # plot vorxy
+                data          = 0.5*vorxy_plot
+                vmax_real     = np.max(data) # for color range
+                vmin_real     = np.min(data) # for color range
+                vmax_sym      = max(abs(vmin_real), abs(vmax_real))
+                norm          = Normalize(vmin=vmin_real, vmax=vmax_real)
+                label_text    = r"$\varpi^{xy}_{\perp}/\beta$"
+                label_kwargs  = {"fontsize": 40,"rotation": 0,"labelpad": 20}
+                label_coords  = (-2.5, 1.15)
+                tick_decimals = 1
+                tick_scientific = False
+                x_shift         = -0.05
+                file_name     = f"vorxy_heatmap_{file_number}"
+                plot_heatmap(data, vmax_real, vmin_real, norm, file_name, label_text, label_kwargs, r_values, t_values, print_pdf, tick_decimals, label_coords, x_shift, tick_scientific)
+              # plot potxy
+                data          = 2 * potxy_plot
+                vmax_real     = np.max(data) # for color range
+                vmin_real     = np.min(data) # for color range
+                vmax_sym      = max(abs(vmin_real), abs(vmax_real))
+                norm          = Normalize(vmin=vmin_real, vmax=vmax_real)
+                label_text    = r"$2\omega^{xy}$"
+                label_kwargs  = {"fontsize": 40,"rotation": 0,"labelpad": 20}
+                label_coords  = (-2.5, 1.125)
+                tick_decimals = 2
+                tick_scientific = False
+                x_shift         = -0.05
+                file_name     = f"potxy_heatmap_{file_number}"
                 plot_heatmap(data, vmax_real, vmin_real, norm, file_name, label_text, label_kwargs, r_values, t_values, print_pdf, tick_decimals, label_coords, x_shift, tick_scientific)
 
 
@@ -1138,9 +1182,9 @@ for file_number_dot in range(8, 9):
 
 
                 if print_dat ==1:
-                        np.savetxt(f"E_total_evo_{file_number}_v2.dat", np.column_stack((t_values, e_total_values)), header="Time t, Energy", delimiter=",", fmt="%.6e")
-                        np.savetxt(f"L_total_evo_{file_number}_v2.dat", np.column_stack((t_values, np.array(l_total_values) + np.array(s_total_values), l_total_values, s_total_values)), header="Time t, Angular Momentum", delimiter=",", fmt="%.6e")
-                        np.savetxt("Ltot_orbinit_ideal_v2.dat",np.column_stack((t_values, np.array(l_total_values) + np.array(s_total_values), l_total_values, s_total_values)),header="Time t, Angular Momentum",fmt="%.6e")
+                        np.savetxt(f"E_total_evo_{file_number}.dat", np.column_stack((t_values, e_total_values)), header="Time t, Energy", delimiter=",", fmt="%.6e")
+                        np.savetxt(f"L_total_evo_{file_number}.dat", np.column_stack((t_values, np.array(l_total_values) + np.array(s_total_values), l_total_values, s_total_values)), header="Time t, Angular Momentum", delimiter=",", fmt="%.6e")
+                        np.savetxt("Ltot_orbinit.dat",np.column_stack((t_values, np.array(l_total_values) + np.array(s_total_values), l_total_values, s_total_values)),header="Time t, Angular Momentum",fmt="%.6e")
 ######################################################
 ######################################################
 
@@ -1174,7 +1218,7 @@ for file_number_dot in range(8, 9):
                 Rd_avg = Rd_integrated / config.t_max   # 各 r に対する値
 
                 out_data_r = np.column_stack([r_values, Rd_avg])
-                np.savetxt(f"Rd_avg_r_{file_number}_v2.dat", out_data_r,
+                np.savetxt(f"Rd_avg_r_{file_number}.dat", out_data_r,
                            fmt="%.6e")
 
                 # --- r方向のフーリエ変換 ---
@@ -1194,7 +1238,7 @@ for file_number_dot in range(8, 9):
 
 
                 out_data = np.column_stack([freqs_pos, spectrum_pos])
-                np.savetxt(f"Rd_spectrum_{file_number}_v2.dat", out_data,
+                np.savetxt(f"Rd_spectrum_{file_number}.dat", out_data,
                            fmt="%.6e")
 
 
